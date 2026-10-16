@@ -1,0 +1,62 @@
+# ROCmigrator .gitignore
+# Note: ROADMAP.md is a strategic document and must be tracked; TASKS.md can be added if used as agent scratch.
+# Currently only ROADMAP.md is generated; documentation is not excluded in .gitignore.
+
+# Strategic document — must be tracked (mandatory for agent)
+!ROADMAP.md
+
+# If granular agent scratch file (TASKS.md) is created in the future:
+# TASKS.md
+
+# Python / PyTorch custom extension
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.pth
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# Node / Next.js frontend
+node_modules/
+.npm
+.next/
+out/
+dist/
+
+# Environment / secrets (never mounted into container; untracked here as well)
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# AMD Runner / Docker build artifacts
+.runner_cache/
+build_amd/
+container_logs/
+
+# Agent configuration (personal — not committed to repo; agents read from disk)
+.agents/
+AGENTS.md
+AGENTS.override.md
+runner/config
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

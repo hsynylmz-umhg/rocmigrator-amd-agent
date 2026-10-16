@@ -1,0 +1,14 @@
+# runner/config.example — AMD Developer Cloud Connection Configuration
+# Real credentials are NEVER WRITTEN to this file; NEVER MOUNTED into container.
+
+AMD_CLOUD_HOST="instance.amd-developer-cloud.internal"
+AMD_CLOUD_PORT=22
+AMD_CLOUD_USER="cloud-user"
+AMD_SSH_KEY_PATH="~/.ssh/amd_cloud_key"
+
+# Docker Daemon / Tunneling
+DOCKER_HOST="ssh://${AMD_CLOUD_USER}@${AMD_CLOUD_HOST}:${AMD_CLOUD_PORT}"
+DOCKER_NETWORK="none"
+CGROUP_CPU_LIMIT="4.0"
+CGROUP_MEM_LIMIT="16g"
+TIMEOUT_SECONDS=300

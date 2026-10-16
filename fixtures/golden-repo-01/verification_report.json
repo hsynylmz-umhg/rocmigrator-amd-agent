@@ -1,0 +1,283 @@
+{
+  "job_id": "job-001",
+  "overall_status": "VERIFIED",
+  "cpu_reference_verified": true,
+  "determinism_passed": true,
+  "results": [
+    {
+      "seed": 42,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 42,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 42,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 42,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 42,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 42,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 1337,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        32,
+        128,
+        256
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float32'>",
+      "atol": 0.00001,
+      "rtol": 0.00001,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    },
+    {
+      "seed": 2026,
+      "shape": [
+        1024
+      ],
+      "dtype": "<class 'numpy.float64'>",
+      "atol": 1e-7,
+      "rtol": 1e-7,
+      "max_abs_err": 0.0,
+      "max_rel_err": 0.0,
+      "mismatch_ratio": 0.0,
+      "nan_inf_detected": false,
+      "passed": true
+    }
+  ],
+  "total_tests": 18,
+  "passed_tests": 18,
+  "failed_tests": 0,
+  "summary": "18 test tamamlandı. Determinizm: Geçti.",
+  "timestamp": "2026-09-19T12:49:34.822676Z"
+}

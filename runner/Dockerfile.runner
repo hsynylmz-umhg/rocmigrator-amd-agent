@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1
+# Build from the repository root. Never include a migration checkout in the image.
+# Docker Hub currently does not publish the requested exact tag. A BASE_IMAGE
+# override must be explicitly reviewed; the default is retained as requested.
+ARG BASE_IMAGE=rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.0
+FROM ${BASE_IMAGE} AS provisioned
+
+USER 0
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+# Only trusted tool provisioning has network access. No job source exists here.
+# Use the image's Conda/PyTorch interpreter, not Ubuntu's separate Python.
+RUN --network=default python3 -m pip install --no-cache-dir --only-binary=:all: \
+      pytest==7.4.4 ninja==1.11.1.1 pydantic==2.10.6
+
+FROM provisioned AS runner
+USER 0
+
+# All remaining image instructions, and every repository build at runtime, are
+# offline. Fail the image build if the supplied base lacks the required tools.
+RUN --network=none mkdir -p /opt/runner/bin /opt/rocmigrator /input /verification /workspace && \
+    ln -s "$(command -v python3)" /opt/runner/bin/python && \
+    ln -s "$(command -v python3)" /opt/runner/bin/python3 && \
+    hipify="$(command -v hipify-perl || true)" && \
+    if [ -z "$hipify" ]; then hipify=/opt/rocm/hip/bin/hipify-perl; fi && \
+    test -x "$hipify" && ln -s "$hipify" /opt/runner/bin/hipify-perl && \
+    command -v c++ && command -v perl && command -v ninja && \
+    /opt/runner/bin/python -I -c 'import torch, pytest, pydantic; assert torch.version.hip; assert pydantic.__version__.startswith("2.")' && \
+    (getent group 1000 >/dev/null || groupadd --gid 1000 runner) && \
+    (getent passwd 1000 >/dev/null || useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin runner) && \
+    chown 1000:1000 /workspace && chmod 0700 /workspace
+
+COPY --chown=0:0 contracts/ /opt/rocmigrator/contracts/
+COPY --chown=0:0 --chmod=0555 runner/entrypoint.sh /opt/runner/entrypoint.sh
+RUN --network=none sed -i 's/\r$//' /opt/runner/entrypoint.sh && \
+    chmod 0555 /opt/runner/entrypoint.sh && \
+    /bin/bash -n /opt/runner/entrypoint.sh && \
+    /opt/runner/bin/python -I -c 'import sys; sys.path.insert(0,"/opt/rocmigrator"); from contracts.api_schemas import LogEvent; from contracts.verification_schemas import VerificationReport'
+
+ENV PATH="/opt/runner/bin:${PATH}" \
+    HOME=/workspace/home \
+    TMPDIR=/tmp \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_INDEX=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MAX_JOBS=2 \
+    OMP_NUM_THREADS=2
+
+WORKDIR /workspace
+USER 1000:1000
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/opt/runner/entrypoint.sh"]
+
+# Runtime limits CANNOT be encoded by USER/ENV in a Dockerfile. Use the supplied
+# docker-compose.yml: network_mode:none, cpus:4, memory:16GiB, swap:0, pids:256,
+# read-only root, bounded tmpfs, no-new-privileges, and all capabilities dropped.
+# The entrypoint rejects missing limits. Do not use --privileged, host IPC/PID,
+# --init (the supervisor must be PID 1), or mount credentials/the Docker socket.

@@ -1,0 +1,7 @@
+# Only trusted runner code and schemas may enter the image build context.
+**
+!contracts/
+!contracts/*.py
+!runner/
+!runner/Dockerfile.runner
+!runner/entrypoint.sh

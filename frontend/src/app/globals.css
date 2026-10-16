@@ -1,0 +1,300 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+@theme inline {
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-sans);
+  background-color: #110708;
+  color: #f8fafc;
+}
+
+html, body {
+  background-color: #110708;
+  color: #f8fafc;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button:not(:disabled), summary {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background-color: #881337;
+  color: #f8fafc;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+}
+
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none;
+  border-color: rgba(225, 29, 72, 0.55);
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.15);
+  background-color: #1a0a0d;
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.35);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3d191e #110708;
+}
+
+.terminal {
+  background: #090304;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal time {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 16px rgba(225, 29, 72, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(225, 29, 72, 0.55);
+  }
+}
+
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes cursorBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(350%) skewX(-20deg);
+  }
+}
+
+/* Stage-Specific Keyframe Animations for Active Pipeline Boxes */
+@keyframes spinPulse {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes branchBounce {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 2px rgba(225,29,72,0.4)); }
+  50% { transform: translateY(-3px); filter: drop-shadow(0 0 8px rgba(244,63,94,0.85)); }
+}
+
+@keyframes radarPulse {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(225,29,72,0.4)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 10px rgba(244,63,94,0.95)); transform: scale(1.1); }
+}
+
+@keyframes circularScan {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(2px, -2px); }
+  50% { transform: translate(0, -3px); }
+  75% { transform: translate(-2px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes barOscillate {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1.15); }
+}
+
+@keyframes chipCorePulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #e11d48); }
+  50% { transform: scale(1.18); filter: drop-shadow(0 0 10px #f43f5e); }
+}
+
+@keyframes bracketsExpand {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.35); filter: drop-shadow(0 0 6px rgba(225,29,72,0.7)); }
+}
+
+@keyframes checkPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.22); filter: drop-shadow(0 0 8px #10b981); }
+}
+
+@keyframes gaugeSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes floatGlow {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 2px rgba(225,29,72,0.3)); }
+  50% { transform: translateY(-3px); filter: drop-shadow(0 0 9px rgba(225,29,72,0.85)); }
+}
+
+.anim-created { animation: spinPulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.anim-branch { animation: branchBounce 1.4s ease-in-out infinite; }
+.anim-shield { animation: radarPulse 1.2s ease-in-out infinite; }
+.anim-scan { animation: circularScan 2.2s ease-in-out infinite; }
+.anim-bars-1 { transform-origin: bottom; animation: barOscillate 1s ease-in-out infinite alternate; }
+.anim-bars-2 { transform-origin: bottom; animation: barOscillate 1.3s ease-in-out 0.2s infinite alternate; }
+.anim-bars-3 { transform-origin: bottom; animation: barOscillate 0.9s ease-in-out 0.4s infinite alternate; }
+.anim-chip { animation: chipCorePulse 1.1s ease-in-out infinite; }
+.anim-compile { animation: bracketsExpand 1.2s ease-in-out infinite; }
+.anim-verify { animation: checkPulse 1.4s ease-in-out infinite; }
+.anim-gauge-hand { transform-origin: 12px 12px; animation: gaugeSpin 1.6s linear infinite; }
+.anim-float { animation: floatGlow 1.8s ease-in-out infinite; }
+
+.anim-flow {
+  stroke-dasharray: 6 4;
+  animation: flowDash 1.2s linear infinite;
+}
+
+.active-glow {
+  box-shadow: 0 0 20px rgba(225, 29, 72, 0.35);
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.terminal-cursor {
+  animation: cursorBlink 1s step-start infinite;
+}
+
+.glossy-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.glossy-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 100%
+  );
+  transform: translateX(-150%) skewX(-20deg);
+  animation: shimmerSweep 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.glossy-button {
+  background: linear-gradient(135deg, #be123c 0%, #e11d48 50%, #9f1239 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 4px 14px rgba(225, 29, 72, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glossy-button:hover:not(:disabled) {
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), 0 6px 20px rgba(225, 29, 72, 0.5);
+  transform: translateY(-1px);
+}
+
+.glossy-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(225, 29, 72, 0.3);
+}
+
+.card-gradient {
+  background: radial-gradient(130% 130% at 50% 0%, #281014 0%, #1e0c0f 50%, #140709 100%);
+}
+
+.card-gradient-subtle {
+  background: linear-gradient(180deg, #1f0c0f 0%, #150709 100%);
+}
+
+@keyframes orbFloat1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(60px, -40px) scale(1.15);
+  }
+  100% {
+    transform: translate(-30px, 50px) scale(0.95);
+  }
+}
+
+@keyframes orbFloat2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-50px, 40px) scale(1.1);
+  }
+  100% {
+    transform: translate(40px, -30px) scale(0.9);
+  }
+}
+
+@keyframes orbFloat3 {
+  0% {
+    transform: translate(0px, 0px) scale(0.95);
+  }
+  50% {
+    transform: translate(30px, 60px) scale(1.2);
+  }
+  100% {
+    transform: translate(-40px, -20px) scale(1);
+  }
+}
+
+.anim-orb-1 {
+  animation: orbFloat1 22s ease-in-out infinite alternate;
+}
+
+.anim-orb-2 {
+  animation: orbFloat2 26s ease-in-out infinite alternate;
+}
+
+.anim-orb-3 {
+  animation: orbFloat3 20s ease-in-out infinite alternate;
+}
+
+.ambient-grid-pattern {
+  background-image: radial-gradient(rgba(244, 63, 94, 0.15) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,82 @@
+name: rocmigrator-runner
+
+services:
+  runner:
+    image: rocmigrator-runner:local
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: runner/Dockerfile.runner
+      network: none
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.0}
+    command: ["compile", "${JOB_ID:?Set a unique JOB_ID}"]
+    user: "1000:1000"
+    working_dir: /workspace
+    init: false
+    privileged: false
+    read_only: true
+    network_mode: none
+    cgroup: private
+    ipc: private
+    cpus: 4.0
+    mem_limit: 16g
+    memswap_limit: 16g
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Keep Docker's default seccomp filter; never use seccomp=unconfined.
+    shm_size: 1g
+    tmpfs:
+      - /workspace:rw,exec,nosuid,nodev,size=8589934592,uid=1000,gid=1000,mode=0700
+      - /tmp:rw,noexec,nosuid,nodev,size=1073741824,uid=1000,gid=1000,mode=0700
+    environment:
+      PYTORCH_ROCM_ARCH: ${PYTORCH_ROCM_ARCH:?Set the reviewed single GPU architecture}
+    devices:
+      - /dev/kfd:/dev/kfd:rw
+      - ${AMD_RENDER_DEVICE:?Set one reviewed /dev/dri/renderD device}:${AMD_RENDER_DEVICE:?Set one reviewed /dev/dri/renderD device}:rw
+    group_add:
+      - "${AMD_RENDER_GID:?Set the numeric render-device group ID}"
+      - "${AMD_KFD_GID:?Set the numeric /dev/kfd group ID}"
+    volumes:
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:?Set the absolute path of an immutable repository export}
+        target: /input
+        read_only: true
+        bind:
+          create_host_path: false
+          propagation: rprivate
+    ulimits:
+      core: 0
+      nofile:
+        soft: 1024
+        hard: 1024
+      fsize:
+        soft: 67108864
+        hard: 67108864
+    restart: "no"
+    stop_grace_period: 5s
+    stdin_open: false
+    tty: false
+    logging:
+      driver: local
+      options:
+        max-size: 1m
+        max-file: "1"
+
+  verification:
+    extends:
+      service: runner
+    profiles: [verify]
+    command: ["verify", "${JOB_ID:?Set a unique JOB_ID}"]
+    volumes:
+      # A nonexistent default avoids requiring this mount for hipify/compile.
+      # The selected verification service fails rather than creating a directory.
+      - type: bind
+        source: ${TRUSTED_VERIFICATION_DIR:-/nonexistent/rocmigrator-verification}
+        target: /verification
+        read_only: true
+        bind:
+          create_host_path: false
+          propagation: rprivate
