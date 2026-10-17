@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 #include <torch/extension.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime.h>
