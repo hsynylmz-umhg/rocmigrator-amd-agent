@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build from the repository root. Never include a migration checkout in the image.
-# Docker Hub currently does not publish the requested exact tag. A BASE_IMAGE
-# override must be explicitly reviewed; the default is retained as requested.
-ARG BASE_IMAGE=rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.0
+# Reviewed MI300X image; runtime compatibility is checked by the GPU harness.
+ARG BASE_IMAGE=rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0
 FROM ${BASE_IMAGE} AS provisioned
 
 USER 0
@@ -11,7 +10,10 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # Only trusted tool provisioning has network access. No job source exists here.
 # Use the image's Conda/PyTorch interpreter, not Ubuntu's separate Python.
 RUN --network=default python3 -m pip install --no-cache-dir --only-binary=:all: \
-      pytest==7.4.4 ninja==1.11.1.1 pydantic==2.10.6
+      pytest==7.4.4 ninja==1.11.1.1 pydantic==2.14.1
+RUN --network=default python3 -m pip install --no-cache-dir --only-binary=:all: \
+      --index-url https://stable.repo.amd.com/rocm/whl-next/ 'rocm[devel]==10.0.0'
+RUN --network=none python3 -I -m rocm_sdk init
 
 FROM provisioned AS runner
 USER 0
@@ -19,8 +21,8 @@ USER 0
 # All remaining image instructions, and every repository build at runtime, are
 # offline. Fail the image build if the supplied base lacks the required tools.
 RUN --network=none mkdir -p /opt/runner/bin /opt/rocmigrator /input /verification /workspace && \
-    ln -s "$(command -v python3)" /opt/runner/bin/python && \
-    ln -s "$(command -v python3)" /opt/runner/bin/python3 && \
+    printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v python3)" > /opt/runner/bin/python && \
+    chmod 0755 /opt/runner/bin/python && cp /opt/runner/bin/python /opt/runner/bin/python3 && \
     hipify="$(command -v hipify-perl || true)" && \
     if [ -z "$hipify" ]; then hipify=/opt/rocm/hip/bin/hipify-perl; fi && \
     test -x "$hipify" && ln -s "$hipify" /opt/runner/bin/hipify-perl && \

@@ -16,6 +16,12 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+!/build/
+/build/*
+!/build/contract_checks/
+/build/contract_checks/*
+!/build/contract_checks/ui_brand_fixture_regression.py
+!/build/contract_checks/simulation_fixture_regression.py
 *.egg
 .eggs/
 *.pth

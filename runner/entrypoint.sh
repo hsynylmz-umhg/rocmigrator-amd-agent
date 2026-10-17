@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fixed argv: hipify JOB_ID relative/file.cu | compile JOB_ID | verify JOB_ID.
+# Fixed argv: hipify JOB_ID relative/file.cu | compile/verify/benchmark/baseline JOB_ID.
 # Python owns JSON escaping, bounded output, process groups, and the deadline.
 set -euo pipefail
 exec /opt/runner/bin/python -I - "$@" <<'PY'
@@ -11,11 +11,12 @@ import signal
 import stat
 import subprocess
 import sys
+import sysconfig
 import time
 from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, "/opt/rocmigrator")
-from contracts.api_schemas import LogEvent
+from contracts.api_schemas import BenchmarkLogData, LogEvent
 from contracts.state_schemas import PipelineState
 from contracts.verification_schemas import VerificationReport
 
@@ -26,7 +27,8 @@ PYTHON = "/opt/runner/bin/python"
 MAX_OUTPUT = 256 * 1024
 MAX_INPUT = 32 * 1024 * 1024
 STATES = {"hipify": PipelineState.HIPIFICATION, "compile": PipelineState.COMPILING,
-          "verify": PipelineState.VERIFYING}
+          "verify": PipelineState.VERIFYING, "benchmark": PipelineState.BENCHMARKING,
+          "baseline": PipelineState.BASELINE}
 
 
 class GuardError(Exception):
@@ -142,20 +144,33 @@ def stage_input(deadline: float) -> None:
 
 
 def child_environment() -> dict[str, str]:
-    python_bin = str(Path(PYTHON).resolve().parent)
+    # Keep the active virtualenv's bin directory. Resolving a wrapper/symlink
+    # loses the ROCm SDK launchers shipped with wheel-based PyTorch images.
+    python_bin = str(Path(sys.executable).parent)
     arch = os.environ.get("PYTORCH_ROCM_ARCH", "")
     require(bool(re.fullmatch(r"gfx[0-9a-f]{3,4}", arch)), "Set one reviewed PYTORCH_ROCM_ARCH, for example gfx90a.")
-    return {
+    environment = {
         "PATH": f"/opt/runner/bin:{python_bin}:/opt/rocm/bin:/opt/rocm/hip/bin:/usr/bin:/bin",
         "HOME": "/workspace/home", "TMPDIR": "/tmp", "LANG": "C.UTF-8",
         "LD_LIBRARY_PATH": f"/opt/rocm/lib:/opt/rocm/lib64:{sys.base_prefix}/lib",
-        "ROCM_PATH": "/opt/rocm", "ROCM_HOME": "/opt/rocm", "HIP_PLATFORM": "amd",
+        # PyTorch discovers either the installed ROCm SDK wheel or /opt/rocm.
+        # Forcing /opt/rocm breaks images whose SDK lives in site-packages.
+        "HIP_PLATFORM": "amd",
         "PYTORCH_ROCM_ARCH": arch, "MAX_JOBS": "2", "OMP_NUM_THREADS": "2",
         "OPENBLAS_NUM_THREADS": "2", "PIP_NO_INDEX": "1", "PIP_CONFIG_FILE": "/dev/null",
         "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1", "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
         "HIP_VISIBLE_DEVICES": "0", "ROCR_VISIBLE_DEVICES": "0",
     }
+    # ROCm 10 wheel images separate runtime and development trees. PyTorch's
+    # default runtime discovery does not include rocThrust development headers.
+    development = Path(sysconfig.get_path("purelib")) / "_rocm_sdk_devel"
+    if (development / "include/thrust/complex.h").is_file():
+        environment["ROCM_HOME"] = str(development)
+        environment["ROCM_PATH"] = str(development)
+        environment["PATH"] += f":{development}/bin"
+        environment["LD_LIBRARY_PATH"] += f":{development}/lib"
+    return environment
 
 
 def terminate_children(process: subprocess.Popen) -> None:
@@ -217,8 +232,22 @@ def event(job_id: str, command: str, message: str, success: bool) -> None:
                    level="INFO" if success else "ERROR", message=message, data=None).model_dump_json(), flush=True)
 
 
-def diagnostics(code: int, output: str, errors: str) -> str:
-    return f"Process exit code: {code}\nstdout:\n{output}\nstderr:\n{errors}"
+def diagnostics(code: int, output: str, errors: str, duration: float | None = None) -> str:
+    timing = f"\nProcess duration seconds: {duration:.6f}" if duration is not None else ""
+    return f"Process exit code: {code}{timing}\nstdout:\n{output}\nstderr:\n{errors}"
+
+
+def read_phase_event(job_id: str, command: str) -> LogEvent:
+    descriptor = os.open(WORK / f"{command}_report.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as report_file:
+        info = os.fstat(report_file.fileno())
+        require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_size <= MAX_OUTPUT,
+                "Phase report must be a bounded regular file.")
+        result = LogEvent.model_validate_json(report_file.read(MAX_OUTPUT + 1))
+    require(result.job_id == job_id and result.state == STATES[command], "Phase report job or state does not match.")
+    if command == "benchmark" and result.level != "ERROR":
+        require(isinstance(result.data, BenchmarkLogData), "Benchmark requires actual structured measurements.")
+    return result
 
 
 def read_report(job_id: str) -> VerificationReport:
@@ -242,10 +271,11 @@ def main(arguments: list[str]) -> int:
     # Reserve five seconds of the 300-second maximum for termination and JSON.
     deadline = time.monotonic() + 295
     command = arguments[0] if arguments else ""
-    job_id = arguments[1] if len(arguments) > 1 and arguments[1].strip() else "runner-rejected"
+    candidate = arguments[1] if len(arguments) > 1 else ""
+    job_id = candidate if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", candidate) else "runner-rejected"
     try:
         require(command in STATES and len(arguments) == (3 if command == "hipify" else 2)
-                and job_id != "runner-rejected", "Usage: hipify JOB_ID relative.cu | compile JOB_ID | verify JOB_ID.")
+                and job_id != "runner-rejected", "Usage: hipify JOB_ID relative.cu | compile/verify/benchmark/baseline JOB_ID.")
         source = relative_source(arguments[2]) if command == "hipify" else None
         isolation_checks()
         environment = child_environment()
@@ -265,20 +295,47 @@ def main(arguments: list[str]) -> int:
             event(job_id, command, diagnostics(code, output, errors), False)
             return 1
         require((WORK / "setup.py").is_file(), "Repository export must include setup.py.")
-        if command == "verify":
+        if command in {"verify", "benchmark", "baseline"}:
             require(HARNESS.is_file() and not HARNESS.is_symlink()
                     and bool(os.statvfs(HARNESS).f_flag & os.ST_RDONLY),
                     "Mount a trusted, read-only numerical harness at /verification/verify.py.")
+        if command == "baseline":
+            baseline_harness = HARNESS.with_name("baseline.py")
+            require(baseline_harness.is_file() and not baseline_harness.is_symlink()
+                    and bool(os.statvfs(baseline_harness).f_flag & os.ST_RDONLY),
+                    "Mount the trusted read-only baseline.py harness.")
+            (WORK / "baseline_report.json").unlink(missing_ok=True)
+            code, output, errors = run_command([PYTHON, "-I", str(baseline_harness), job_id,
+                                                str(WORK / "baseline_report.json")], environment, deadline)
+            require(code == 0, "CPU baseline harness failed. " + diagnostics(code, output, errors))
+            result = read_phase_event(job_id, command)
+            print(result.model_dump_json(), flush=True)
+            return 0 if result.level != "ERROR" else 1
+        if command in {"verify", "benchmark"}:
             gpu_check = ("import torch; assert torch.version.hip, 'ROCm PyTorch required'; "
                          "assert torch.cuda.is_available(), 'AMD GPU unavailable'; "
                          "assert torch.cuda.device_count() == 1, 'Exactly one GPU required'; "
                          "x=torch.ones(1, device='cuda'); torch.cuda.synchronize(); assert x.is_cuda")
             code, output, errors = run_command([PYTHON, "-I", "-c", gpu_check], environment, deadline)
             require(code == 0, "GPU preflight failed. " + diagnostics(code, output, errors))
+        started = time.monotonic()
         code, output, errors = run_command([PYTHON, "setup.py", "build_ext", "--inplace"], environment, deadline)
+        duration = time.monotonic() - started
         if code != 0 or command == "compile":
-            event(job_id, command, diagnostics(code, output, errors), code == 0)
+            event(job_id, command, diagnostics(code, output, errors, duration), code == 0)
             return 0 if code == 0 else 1
+        if command == "benchmark":
+            benchmark_harness = HARNESS.with_name("benchmark.py")
+            require(benchmark_harness.is_file() and not benchmark_harness.is_symlink()
+                    and bool(os.statvfs(benchmark_harness).f_flag & os.ST_RDONLY),
+                    "Mount the trusted read-only benchmark.py harness.")
+            (WORK / "benchmark_report.json").unlink(missing_ok=True)
+            code, output, errors = run_command([PYTHON, "-I", str(benchmark_harness), job_id,
+                                                str(WORK / "benchmark_report.json")], environment, deadline)
+            require(code == 0, "GPU benchmark harness failed. " + diagnostics(code, output, errors))
+            result = read_phase_event(job_id, command)
+            print(result.model_dump_json(), flush=True)
+            return 0 if result.level != "ERROR" else 1
         # A verification invocation rebuilds its own ephemeral workspace. The
         # trusted harness calls the compiled extension against CPU references,
         # uses assert_close and existing tolerances, and writes the strict report.

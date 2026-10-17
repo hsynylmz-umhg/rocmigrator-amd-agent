@@ -1,0 +1,6 @@
+# Include only when /dev/kfd and the selected render node have different GIDs.
+# Compose rejects duplicate supplemental groups when both devices share a GID.
+services:
+  runner:
+    group_add:
+      - "${AMD_KFD_GID:?Set the numeric /dev/kfd group ID}"

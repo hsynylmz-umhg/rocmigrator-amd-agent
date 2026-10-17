@@ -1,16 +1,9 @@
-"""Async migration state machine with live LLM proposals and simulated runner hooks.
+"""Async state machine, SSE snapshots, and bounded OpenAI patch proposals.
 
-Only _propose_patch contacts OpenAI, using OPENAI_API_KEY and bounded synthetic
-error/source context. A repository-root .env file supplies the key when the
-process environment does not. OPENAI_MODEL optionally selects a JSON-mode model
-supporting temperature=0.0; the default is gpt-4o. No LLM tools are provided.
-Runner hooks never execute request.repo_path, run local Git/build commands, or
-claim GPU verification. Future runner execution requires non-root UID 1000,
-network isolation, CPU/memory/disk/PID limits, no mounted credentials, and a
-maximum 300-second timeout. The API key stays in the backend process.
-
-Snapshots are process-local until a durable job store is connected. The legacy
-synchronous fixture harness remains available for existing CLI consumers only.
+Production dispatches to real_engine and the isolated AMD runner. Explicit
+ROCMIGRATOR_MODE=simulation retains the labeled offline regression hooks below.
+The LLM receives bounded diagnostics/source and no tools; credentials remain in
+the backend. Snapshots are process-local and require a single backend worker.
 """
 
 import asyncio
@@ -47,6 +40,9 @@ _job_statuses: dict[str, JobStatusResponse] = {}
 # Resolve from this file so the API works regardless of its launch directory.
 # Explicit process settings take precedence over the local, ignored .env file.
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env", override=False)
+# Capture the operator's explicit process mode once. Regression tests may clear
+# provider environment variables without changing the selected execution mode.
+EXECUTION_MODE = os.environ.get("ROCMIGRATOR_MODE", "real")
 
 _FORWARD_STATES = (
     PipelineState.CREATED, PipelineState.CLONING, PipelineState.SECURITY_SCAN,
@@ -62,7 +58,7 @@ _ALLOWED_TRANSITIONS[PipelineState.COMPILING] |= frozenset((PipelineState.REPAIR
 _ALLOWED_TRANSITIONS[PipelineState.REPAIR] = frozenset(
     (PipelineState.COMPILING, PipelineState.ROLLED_BACK)
 )
-_ALLOWED_TRANSITIONS[PipelineState.USER_APPROVAL] = frozenset((PipelineState.ROLLED_BACK,))
+_ALLOWED_TRANSITIONS[PipelineState.USER_APPROVAL] = frozenset((PipelineState.ROLLED_BACK, PipelineState.PR_CREATED))
 _ALLOWED_TRANSITIONS[PipelineState.PR_CREATED] = frozenset()
 _ALLOWED_TRANSITIONS[PipelineState.ROLLED_BACK] = frozenset()
 
@@ -177,6 +173,7 @@ async def _run_compile_step(job_id: str, applied_patch: PatchProposal | None) ->
 
 async def _propose_patch(
     error: LogEvent, fingerprint_id: str, source_context: tuple[str, ...],
+    *, file_path: str | None = None, source_start_line: int = 1,
 ) -> str:
     """Request raw PatchProposal JSON; downstream validation remains authoritative.
 
@@ -194,11 +191,13 @@ async def _propose_patch(
     if (
         not 1 <= len(error.message.splitlines()) <= 3
         or len(error.message) > 4000
-        or not 80 <= len(source_context) <= 150
+        or not (1 if file_path is not None else 80) <= len(source_context) <= 150
     ):
         raise ValueError("LLM context exceeds the bounded error/source window.")
-    if source_context != _SIM_SOURCE:
+    if file_path is None and source_context != _SIM_SOURCE:
         raise ValueError("The disconnected runner permits only the synthetic source fixture.")
+    if file_path is not None and (not _safe_source_path(file_path) or source_start_line < 1):
+        raise ValueError("Real repair context must name an allowlisted source window.")
 
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key or not api_key.strip():
@@ -222,7 +221,7 @@ async def _propose_patch(
         "Never add dependencies, alter public APIs, tests or tolerances, introduce CPU "
         "fallback, or delete, empty, or stub kernels. Keep the three modifies_* flags false "
         "and allowlisted true only for that permitted file. Do not claim compilation, "
-        "numerical verification, or benchmarks passed: runner execution is simulated.\n"
+        "numerical verification, or benchmarks passed; those require independent runner evidence.\n"
         "diff must be a standard unified diff, with --- a/<file_path> and +++ b/<file_path> "
         "headers, correct hunk line numbers, and exactly three unchanged context lines on "
         "each side where available, clipped at file boundaries. Preserve source whitespace. "
@@ -238,10 +237,10 @@ async def _propose_patch(
     )
     user_prompt = json.dumps({
         "patch_id": f"{error.job_id}-semantic-repair",
-        "file_path": _SIM_FILE,
+        "file_path": file_path or _SIM_FILE,
         "fingerprint_id": fingerprint_id,
         "compiler_error": error.message,
-        "source_start_line": 1,
+        "source_start_line": source_start_line,
         "source_context": source_context,
     })
 
@@ -556,7 +555,7 @@ async def _rollback(job_id: str, reason: str) -> JobStatusResponse:
     return await _transition(current, PipelineState.ROLLED_BACK, report=report)
 
 
-async def run_migration_pipeline(job_id: str, request: JobCreateRequest) -> JobStatusResponse:
+async def _run_simulation_pipeline(job_id: str, request: JobCreateRequest) -> JobStatusResponse:
     """Run simulated runner stages with real LLM repair proposals and store the result.
 
     FastAPI may schedule this coroutine as a background task. This entry point
@@ -737,3 +736,14 @@ async def run_migration_pipeline(job_id: str, request: JobCreateRequest) -> JobS
         return await _rollback(job_id, "A runner/LLM hook exceeded the 300-second timeout.")
     except Exception as exc:
         return await _rollback(job_id, f"Pipeline stopped: {type(exc).__name__}: {exc}")
+
+
+async def run_migration_pipeline(job_id: str, request: JobCreateRequest) -> JobStatusResponse:
+    """Default to the real AMD runner; simulation requires explicit test configuration."""
+    mode = EXECUTION_MODE
+    if mode == "simulation":
+        return await _run_simulation_pipeline(job_id, request)
+    if mode != "real":
+        raise RuntimeError("ROCMIGRATOR_MODE must be real or explicitly simulation.")
+    from agent_orchestrator.real_engine import run_real_pipeline
+    return await run_real_pipeline(job_id, request)

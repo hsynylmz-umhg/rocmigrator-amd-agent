@@ -2,14 +2,14 @@ name: rocmigrator-runner
 
 services:
   runner:
-    image: rocmigrator-runner:local
+    image: ${RUNNER_IMAGE:-rocmigrator-runner:latest}
     pull_policy: never
     build:
       context: ..
       dockerfile: runner/Dockerfile.runner
       network: none
       args:
-        BASE_IMAGE: ${BASE_IMAGE:-rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.0}
+        BASE_IMAGE: ${BASE_IMAGE:-rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0}
     command: ["compile", "${JOB_ID:?Set a unique JOB_ID}"]
     user: "1000:1000"
     working_dir: /workspace
@@ -38,7 +38,6 @@ services:
       - ${AMD_RENDER_DEVICE:?Set one reviewed /dev/dri/renderD device}:${AMD_RENDER_DEVICE:?Set one reviewed /dev/dri/renderD device}:rw
     group_add:
       - "${AMD_RENDER_GID:?Set the numeric render-device group ID}"
-      - "${AMD_KFD_GID:?Set the numeric /dev/kfd group ID}"
     volumes:
       - type: bind
         source: ${RUNNER_INPUT_DIR:?Set the absolute path of an immutable repository export}
@@ -64,6 +63,7 @@ services:
       options:
         max-size: 1m
         max-file: "1"
+        compress: "false"
 
   verification:
     extends:

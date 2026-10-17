@@ -12,12 +12,6 @@ import { BlurReveal } from "./ui/blur-reveal";
 const inputClass =
   "w-full rounded-lg border border-[#3d191e] bg-[#120608] px-3.5 py-2.5 text-sm text-foreground placeholder:text-brand-khaki/50 shadow-inner transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20 focus:bg-[#1a0a0d] disabled:opacity-50";
 
-const PRESET_PATHS = [
-  { label: "Golden 01", path: "fixtures/golden-repo-01", desc: "Fused Bias LeakyReLU" },
-  { label: "Golden 02", path: "fixtures/golden-repo-02", desc: "Sum Reduction" },
-  { label: "Golden 03", path: "fixtures/golden-repo-03", desc: "Softmax Kernel" },
-] as const;
-
 export function Dashboard() {
   const migration = useMigration();
 
@@ -201,7 +195,7 @@ export function Dashboard() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5 p-5">
-                {/* Repository Path with Browse Button & Quick Presets */}
+                {/* Repository Path with Browse Button */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label htmlFor="repo-path" className="text-sm font-medium text-foreground">
@@ -227,7 +221,7 @@ export function Dashboard() {
                       type="button"
                       onClick={handleBrowseFolder}
                       disabled={locked}
-                      title="Browse local directory / Klasör Seç"
+                      title="Browse local directory"
                       className="shrink-0 flex items-center gap-1 rounded-lg border border-[#3d191e] bg-[#1f0c10] px-2.5 py-2 text-xs font-semibold text-rose-300 transition-all hover:border-rose-500 hover:bg-[#2c1218] hover:text-rose-100 disabled:opacity-50 outline-none focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-rose-500/30"
                     >
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -235,29 +229,6 @@ export function Dashboard() {
                       </svg>
                       <span>Browse</span>
                     </button>
-                  </div>
-
-                  {/* 1-Click Quick-Select Presets */}
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {PRESET_PATHS.map((preset) => {
-                      const selected = repoPath === preset.path;
-                      return (
-                        <button
-                          key={preset.path}
-                          type="button"
-                          onClick={() => handleRepoPathChange(preset.path)}
-                          disabled={locked}
-                          title={preset.desc}
-                          className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-all duration-150 outline-none focus:outline-none focus-visible:outline-none focus:ring-1 focus:ring-rose-500/40 ${
-                            selected
-                              ? "border-rose-500 bg-rose-950/60 text-rose-200 font-bold shadow-[0_0_8px_rgba(225,29,72,0.3)]"
-                              : "border-[#3d191e] bg-[#14080a] text-brand-khaki hover:border-rose-500/50 hover:text-foreground"
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      );
-                    })}
                   </div>
 
                   <p id="repo-help" className="mt-2 text-xs leading-5 text-brand-khaki">
@@ -600,7 +571,7 @@ export function Dashboard() {
             />
 
             {/* Numerical Verification Panel */}
-            <VerificationSummary report={migration.job?.verification_report ?? null} />
+            <VerificationSummary report={migration.job?.verification_report ?? null} events={migration.events} />
           </div>
         </div>
 

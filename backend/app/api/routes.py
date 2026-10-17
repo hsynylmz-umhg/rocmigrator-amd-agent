@@ -15,6 +15,7 @@ from agent_orchestrator.engine import (
     run_migration_pipeline,
 )
 from backend.app.services.stream import log_streamer
+from backend.app.services.approval import ApprovalError, approve_migration
 from contracts.api_schemas import (
     ApprovalRequest,
     JobCreateRequest,
@@ -110,8 +111,8 @@ async def get_migration_report(task_id: str, response: Response) -> Verification
     response_model=ApprovalRequest,
     deprecated=True,
 )
-async def approve_job(task_id: str, payload: ApprovalRequest) -> ApprovalRequest:
-    """Fail closed until an explicit engine approval handler is connected."""
+async def approve_job(task_id: str, payload: ApprovalRequest, response: Response) -> ApprovalRequest:
+    """Publish only this explicitly approved job's verified isolated source."""
     _require_status(task_id)
     if payload.job_id != task_id:
         raise HTTPException(
@@ -119,11 +120,12 @@ async def approve_job(task_id: str, payload: ApprovalRequest) -> ApprovalRequest
             detail="Approval job_id must match the requested task_id.",
             headers=_NO_CACHE_HEADERS,
         )
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Approval is unavailable until the engine approval handler is connected.",
-        headers=_NO_CACHE_HEADERS,
-    )
+    try:
+        await approve_migration(task_id, payload)
+    except ApprovalError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc), headers=_NO_CACHE_HEADERS) from None
+    response.headers.update(_NO_CACHE_HEADERS)
+    return payload
 
 
 @router.get("/logs/stream", response_class=StreamingResponse)

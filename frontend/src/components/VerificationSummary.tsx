@@ -1,13 +1,18 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { VerificationReport } from "../lib/contracts";
+import type { LogEvent, VerificationReport } from "../lib/contracts";
 import { BlurReveal } from "./ui/blur-reveal";
 
-export function VerificationSummary({ report }: Readonly<{ report: VerificationReport | null }>) {
+export function VerificationSummary({ report, events = [] }: Readonly<{ report: VerificationReport | null; events?: readonly LogEvent[] }>) {
   const isVerified = report?.overall_status === "VERIFIED";
   const isFailed = report?.overall_status === "FAILED";
   const isRolledBack = report?.overall_status === "ROLLED_BACK";
+  const scanPassed = events.some((event) => event.state === "SECURITY_SCAN" && event.level === "INFO"
+    && event.message.includes("Security scan completed successfully"));
+  const scanFailed = events.some((event) => event.state === "SECURITY_SCAN" && event.level === "ERROR");
+  const benchmark = events.filter((event) => event.state === "BENCHMARKING" && event.level === "INFO")
+    .map((event) => event.data).findLast((data) => data && "avg_latency_ms" in data);
 
   const maxAbsErr =
     report && report.results.length > 0
@@ -70,8 +75,10 @@ export function VerificationSummary({ report }: Readonly<{ report: VerificationR
             </svg>
             <span className="text-xs font-medium text-foreground">Security scan</span>
           </div>
-          <span className="rounded bg-emerald-950/40 px-2 py-0.5 font-mono text-[11px] font-semibold text-emerald-300 border border-emerald-500/30">
-            Clean
+          <span className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold border ${scanPassed
+            ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/30"
+            : "bg-[#231013] text-brand-khaki border-[#3d191e]"}`}>
+            {scanPassed ? "Clean" : scanFailed ? "Failed" : "Pending"}
           </span>
         </div>
 
@@ -118,12 +125,12 @@ export function VerificationSummary({ report }: Readonly<{ report: VerificationR
           </div>
           <span
             className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold border ${
-              report
+              benchmark
                 ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
                 : "border-[#3d191e] bg-[#231013] text-brand-khaki"
             }`}
           >
-            {report ? "1.19x speedup on MI300X" : "Pending baseline"}
+            {benchmark && "avg_latency_ms" in benchmark ? `${benchmark.avg_latency_ms.toFixed(6)} ms / call` : "Not measured yet"}
           </span>
         </div>
       </div>
